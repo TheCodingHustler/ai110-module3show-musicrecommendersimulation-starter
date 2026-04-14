@@ -27,6 +27,18 @@ Some prompts to answer:
 - How does your `Recommender` compute a score for each song
 - How do you choose which songs to recommend
 
+
+Song Features
+Each song stores genre, mood, energy, tempo, valence, danceability, and acousticness. The recommender actively uses genre, mood, energy, and acousticness for scoring.
+
+UserProfile
+Stores the user's favorite genre, favorite mood, target energy level, and whether they prefer acoustic or produced sounds. Genre and mood can be a single value or a list. Energy can be a single target or a min/max range.
+
+How a Score is Computed
+Each song earns points based on how well it matches the user. A genre match gives the most points, followed by energy proximity, then mood, then acousticness fit. All points are added up and divided by 5 to produce a final score between 0 and 1.
+
+How Songs are Chosen
+Every song gets scored, then they are sorted from highest to lowest. The top K songs are returned as recommendations.
 You can include a simple diagram or bullet list if helpful.
 
 ---
