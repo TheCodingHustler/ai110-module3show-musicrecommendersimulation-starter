@@ -21,42 +21,53 @@ This version builds a content-based music recommender that scores songs from a C
 
 ```mermaid
 flowchart TD
-    A[songs.csv] -->|load_songs| B[List of Song objects]
-    C[UserProfile\ngenre · mood · energy · acousticness] --> D
+    A[/"📄 data/songs.csv\n18 songs"/] -->|load_songs| B["📋 Catalog\n[Song1, Song2, … Song18]"]
+    P[/"👤 User Preferences\ngenre · mood · energy · acousticness"/] --> LOOP
 
-    B --> D[Score each song\nagainst UserProfile]
+    B -->|"for each song in catalog"| LOOP
 
-    D --> E{Weighted scoring recipe}
-    E -->|+2.0 genre match| F[Raw score 0–5]
-    E -->|+1.0 mood match| F
-    E -->|+1.5 energy proximity| F
-    E -->|+0.5 acousticness fit| F
+    subgraph LOOP ["🔁 Loop — judge every song individually"]
+        direction TB
+        S["🎵 One Song\ne.g. Library Rain\nlofi / chill / 0.35 energy"] --> SCORE
+        subgraph SCORE ["⚖️ Weighted Scoring Recipe"]
+            direction LR
+            G["+2.0 genre match\nbinary: yes / no"]
+            M["+1.0 mood match\nbinary: yes / no"]
+            EN["+1.5 energy proximity\n1.5 × (1 − |song − target|)"]
+            AC["+0.5 acousticness fit\nscales with preference"]
+        end
+        SCORE --> RAW["Raw total  0 – 5"]
+        RAW -->|"÷ 5.0"| NORM["Normalized score\n0.0 – 1.0"]
+    end
 
-    F -->|÷ 5.0 → normalize| G[Score 0.0–1.0 per song]
-    G --> H[Sort all songs descending]
-    H --> I[Return top K songs]
-    I --> J[Output: Ranked Recommendations\nwith explanation]
+    LOOP -->|"repeat for all 18 songs"| SCORED["📊 All songs with scores\n[(Song, score), …]"]
+    SCORED --> SORT["Sort descending by score"]
+    SORT --> TOPK["✂️ Slice top K results"]
+    TOPK --> OUT[/"🎧 Output\nRanked recommendations\n+ plain-language explanation"/]
 ```
 
 ---
 
 ### Algorithm Recipe
 
-Every song in the catalog is scored against the user profile using four weighted features:
+Every song in the catalog is scored against the user profile using four weighted features. The score is the sum of all earned points divided by the maximum possible (5.0), producing a value between 0.0 and 1.0.
 
-| Feature | Rule | Weight |
-|---|---|---|
-| Genre | +2.0 if song genre is in user's favorite genres | 2.0 pts |
-| Mood | +1.0 if song mood is in user's favorite moods | 1.0 pts |
-| Energy | `(1 - abs(song.energy - target)) × 1.5` | 0.0–1.5 pts |
-| Acousticness | rewards low acousticness for non-acoustic users (and high for acoustic users) × 0.5 | 0.0–0.5 pts |
-| **Total** | divided by 5.0 to normalize | **0.0–1.0** |
+| Feature | How points are earned | Max pts | % of total |
+|---|---|---|---|
+| **Genre** | +2.0 if song's genre matches user's favorite genre(s); else +0.0 | 2.0 | 40% |
+| **Mood** | +1.0 if song's mood matches user's favorite mood(s); else +0.0 | 1.0 | 20% |
+| **Energy** | `1.5 × (1.0 − |song.energy − target|)` — slides from 1.5 (exact) to 0.0 (opposite) | 1.5 | 30% |
+| **Acousticness** | `0.5 × song.acousticness` for acoustic users; `0.5 × (1 − acousticness)` for non-acoustic | 0.5 | 10% |
+| **Total** | `(genre + mood + energy + acousticness) ÷ 5.0` | **1.0** | 100% |
 
 Songs are ranked by final score. The top K are returned with a plain-language explanation of why each matched.
 
+**Why these weights?**
+Genre is the hardest dealbreaker — a jazz fan won't enjoy metal regardless of mood — so it earns the most weight. Energy is a continuous signal that smoothly rewards closeness rather than forcing an all-or-nothing cutoff. Mood is important but secondary; two songs can share a genre but feel different in mood and still both be reasonable picks. Acousticness is a fine-tuning tiebreaker, not a primary filter.
+
 **UserProfile supports ranges and lists:**
-- `favorite_genre` — single string or list e.g. `["rock", "metal"]`
-- `favorite_mood` — single string or list e.g. `["intense", "aggressive"]`
+- `favorite_genre` — single string or list, e.g. `["rock", "metal"]`
+- `favorite_mood` — single string or list, e.g. `["intense", "aggressive"]`
 - `target_energy` — single float e.g. `0.85` or a range tuple e.g. `(0.75, 0.99)`
 - `likes_acoustic` — boolean
 
@@ -64,10 +75,11 @@ Songs are ranked by final score. The top K are returned with a plain-language ex
 
 ### Potential Biases
 
-- **Genre over-prioritization** — genre carries 2x the weight of mood, so a song with a perfect mood, energy, and acousticness fit but wrong genre will still score lower than a genre match with nothing else in common.
-- **Mood string matching is brittle** — "intense" and "aggressive" feel identical to a human but score 0 against each other. Niche moods in the catalog may never surface.
-- **Energy range bias** — songs at the extreme ends of the energy scale (very calm or very intense) are less likely to appear for middle-range users even if everything else matches.
-- **Small catalog amplifies all biases** — with only 18 songs, a single mismatch on genre can eliminate most of the catalog from contention.
+- **Genre over-prioritization** — with 40% of the score locked to genre, a song with a perfect mood, energy, and acousticness fit but the wrong genre will still lose to a genre match with nothing else in common. In an 18-song catalog this can push genuinely great matches out of the top K entirely.
+- **Mood string matching is brittle** — "intense" and "aggressive" feel near-identical to a human but score 0 against each other because the comparison is exact string equality. Synonymous or overlapping moods in the catalog will never cross-match.
+- **Energy range edge penalty** — songs at the extremes of the energy scale (very calm ≤ 0.3 or very intense ≥ 0.9) earn lower energy scores from any middle-range user, even when genre and mood match perfectly.
+- **Acousticness is always scored** — a user who is indifferent to acousticness still has it factored in because `likes_acoustic` is a required boolean with no neutral option. This introduces a quiet tiebreaker the user never consciously chose.
+- **Small catalog amplifies every bias** — with only 18 songs, a single genre mismatch can eliminate 15 of them. Weights that would be reasonable in a million-song catalog become much more aggressive here.
 
 ---
 
