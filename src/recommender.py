@@ -36,18 +36,21 @@ class UserProfile:
 
 
 def _genre_score(song_genre: str, preference: Union[str, List[str]]) -> float:
+    """Return 1.0 if song_genre matches the preference string or list, else 0.0."""
     if isinstance(preference, list):
         return 1.0 if song_genre in preference else 0.0
     return 1.0 if song_genre == preference else 0.0
 
 
 def _mood_score(song_mood: str, preference: Union[str, List[str]]) -> float:
+    """Return 1.0 if song_mood matches the preference string or list, else 0.0."""
     if isinstance(preference, list):
         return 1.0 if song_mood in preference else 0.0
     return 1.0 if song_mood == preference else 0.0
 
 
 def _energy_score(song_energy: float, preference: Union[float, Tuple[float, float]]) -> float:
+    """Return a 0.0–1.0 proximity score: 1.0 when energy exactly matches the target or range."""
     if isinstance(preference, tuple):
         min_e, max_e = preference
         if min_e <= song_energy <= max_e:
