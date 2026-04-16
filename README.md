@@ -83,33 +83,191 @@ Genre is the hardest dealbreaker — a jazz fan won't enjoy metal regardless of 
 
 ---
 
-### Sample Terminal Output
+### Sample Terminal Output — All Profiles
 
-Default profile: `genre=pop  mood=happy  energy=0.8  likes_acoustic=False`
+Six profiles were tested: three standard and three adversarial edge cases.
 
+---
+
+#### Profile 1 — High-Energy Pop
 ```
-====================================================
-  User profile: genre=pop  mood=happy  energy=0.8
-====================================================
+========================================================
+  High-Energy Pop
+  genre=pop  mood=happy  energy=0.9  likes_acoustic=False
+========================================================
   #   Title                  Artist           Score
   --- ---------------------- ---------------- -----
-  1   Sunrise City           Neon Echo        0.98
-      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.47), acousticness fit (+0.41)
+  1   Sunrise City           Neon Echo        0.96
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.38), acousticness fit (+0.41)
 
-  2   Gym Hero               Max Pulse        0.76
-      Because: genre match (+2.0), energy proximity (+1.30), acousticness fit (+0.47)
+  2   Gym Hero               Max Pulse        0.79
+      Because: genre match (+2.0), energy proximity (+1.46), acousticness fit (+0.47)
 
-  3   Rooftop Lights         Indigo Parade    0.55
-      Because: mood match (+1.0), energy proximity (+1.44), acousticness fit (+0.33)
+  3   Rooftop Lights         Indigo Parade    0.52
+      Because: mood match (+1.0), energy proximity (+1.29), acousticness fit (+0.33)
 
-  4   Groove Station         The Funk Unit    0.38
-      Because: energy proximity (+1.48), acousticness fit (+0.43)
+  4   Storm Runner           Voltline         0.39
+      Because: energy proximity (+1.48), acousticness fit (+0.45)
 
-  5   Neon Pulse             Synthara         0.37
-      Because: energy proximity (+1.41), acousticness fit (+0.46)
+  5   Block Party            Dre Wallace      0.38
+      Because: energy proximity (+1.46), acousticness fit (+0.46)
 ```
 
-Results match expectations: the two pop songs (#1 and #2) dominate because genre earns 40% of the score. "Sunrise City" edges out "Gym Hero" because it also matches the `happy` mood. Songs #3–5 have no genre match but rank by energy closeness.
+Sunrise City leads because it earns all four signals. Gym Hero is #2 with genre and energy but no mood match — the mood penalty is exactly why it sits 0.17 points below Sunrise City. Songs #4 and #5 have no genre or mood match and are pure energy fallback.
+
+---
+
+#### Profile 2 — Chill Lofi Study
+```
+========================================================
+  Chill Lofi Study
+  genre=lofi  mood=chill  energy=0.35  likes_acoustic=True
+========================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Library Rain           Paper Lanterns   0.99
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.50), acousticness fit (+0.43)
+
+  2   Midnight Coding        LoRoom           0.95
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.40), acousticness fit (+0.35)
+
+  3   Focus Flow             LoRoom           0.76
+      Because: genre match (+2.0), energy proximity (+1.42), acousticness fit (+0.39)
+
+  4   Spacewalk Thoughts     Orbit Bloom      0.57
+      Because: mood match (+1.0), energy proximity (+1.40), acousticness fit (+0.46)
+
+  5   Coffee Shop Stories    Slow Stereo      0.38
+      Because: energy proximity (+1.47), acousticness fit (+0.45)
+```
+
+The cleanest result. The top two songs are both lofi/chill and score nearly perfectly. Focus Flow (#3) is lofi but "focused" not "chill" — it earns genre but loses the mood point. The system correctly separates them.
+
+---
+
+#### Profile 3 — Deep Intense Rock
+```
+========================================================
+  Deep Intense Rock
+  genre=rock  mood=intense  energy=0.92  likes_acoustic=False
+========================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Storm Runner           Voltline         0.99
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.48), acousticness fit (+0.45)
+
+  2   Gym Hero               Max Pulse        0.59
+      Because: mood match (+1.0), energy proximity (+1.48), acousticness fit (+0.47)
+
+  3   Shatter                Iron Veil        0.38
+      Because: energy proximity (+1.43), acousticness fit (+0.47)
+
+  4   Block Party            Dre Wallace      0.38
+      Because: energy proximity (+1.42), acousticness fit (+0.46)
+
+  5   Groove Station         The Funk Unit    0.35
+      Because: energy proximity (+1.33), acousticness fit (+0.43)
+```
+
+Storm Runner is a perfect match (0.99). But there is only one rock song in the catalog — so #2 through #5 are all genre misses. Gym Hero (pop) gets #2 purely on mood + energy. Shatter (metal) does not match "intense" as a mood string even though it clearly is intense music — a real limitation.
+
+---
+
+#### Profile 4 — EDGE: Classical but High-Energy
+```
+========================================================
+  EDGE: Classical but High-Energy
+  genre=classical  mood=melancholic  energy=0.95  likes_acoustic=True
+========================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Moonlit Sonata         Clara Voss       0.77
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+0.41), acousticness fit (+0.47)
+
+  2   Shatter                Iron Veil        0.30
+      Because: energy proximity (+1.47)
+
+  3   Gym Hero               Max Pulse        0.30
+      Because: energy proximity (+1.47)
+
+  4   Storm Runner           Voltline         0.30
+      Because: energy proximity (+1.44)
+
+  5   Block Party            Dre Wallace      0.28
+      Because: energy proximity (+1.38)
+```
+
+**This is the clearest failure case.** The user asked for energetic classical (energy=0.95). Moonlit Sonata has energy=0.22 — completely opposite. But genre + mood match (3.0 raw points) crushes the energy penalty (only 0.41 out of 1.5 possible). The system recommends a quiet piano piece to someone who wanted intense classical music, and it does so with confidence (0.77 score). Songs #2–5 score identically (~0.30) because they have no genre or mood match at all.
+
+---
+
+#### Profile 5 — EDGE: Unknown Genre (k-pop)
+```
+========================================================
+  EDGE: Unknown Genre (k-pop)
+  genre=k-pop  mood=happy  energy=0.8  likes_acoustic=False
+========================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Sunrise City           Neon Echo        0.58
+      Because: mood match (+1.0), energy proximity (+1.47), acousticness fit (+0.41)
+
+  2   Rooftop Lights         Indigo Parade    0.55
+      Because: mood match (+1.0), energy proximity (+1.44), acousticness fit (+0.33)
+
+  3   Groove Station         The Funk Unit    0.38
+      Because: energy proximity (+1.48), acousticness fit (+0.43)
+
+  4   Neon Pulse             Synthara         0.37
+      Because: energy proximity (+1.41), acousticness fit (+0.46)
+
+  5   Block Party            Dre Wallace      0.37
+      Because: energy proximity (+1.40), acousticness fit (+0.46)
+```
+
+No k-pop songs exist in the catalog, so zero genre-match points are awarded to any song. The maximum achievable score drops to 0.60. The system falls back to mood and energy — and still produces sensible-sounding recommendations — but it never tells the user why the scores are so low. This is a silent failure.
+
+---
+
+#### Profile 6 — EDGE: Conflicting Mood vs Energy
+```
+========================================================
+  EDGE: Conflicting Mood vs Energy
+  genre=electronic  mood=dreamy  energy=0.05  likes_acoustic=False
+========================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Neon Pulse             Synthara         0.78
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+0.47), acousticness fit (+0.46)
+
+  2   Moonlit Sonata         Clara Voss       0.26
+      Because: energy proximity (+1.25)
+
+  3   Spacewalk Thoughts     Orbit Bloom      0.24
+      Because: energy proximity (+1.16)
+
+  4   Library Rain           Paper Lanterns   0.22
+      Because: energy proximity (+1.05)
+
+  5   Midnight Coding        LoRoom           0.22
+      Because: energy proximity (+0.95)
+```
+
+The user wants near-silent music (energy=0.05) with a dreamy feeling. Neon Pulse (energy=0.74) wins confidently at 0.78 because it matches genre and mood. Its energy is 14× what the user asked for. Genre + mood again overrule the energy signal. Songs #2–5 are sorted entirely by how low their energy is, which is the correct fallback behavior — but the #1 result is wrong.
+
+---
+
+### Weight Experiment: Energy ×2, Genre ÷2
+
+Temporarily changed genre weight from 2.0 → 1.0 and energy weight from 1.5 → 3.0 (denominator adjusted from 5.0 to 5.5 to keep scores normalized).
+
+Key observations:
+- **Classical/High-Energy**: Moonlit Sonata still won (0.60 vs 0.54 for Shatter). Even halving genre did not fix the bias — the catalog is the real bottleneck.
+- **Unknown Genre (k-pop)**: Sunrise City improved from 0.58 → 0.79 because the bigger energy weight now rewards the energy match more strongly.
+- **Chill Lofi**: Spacewalk Thoughts jumped from #4 to #3 (tied with Focus Flow) because its strong mood + energy match now outweighs the genre miss.
+- **Normal profiles**: Rankings were mostly stable; energy-heavy songs like Storm Runner moved up slightly.
+
+Conclusion: the weight shift made scores more sensitive to energy (better for edge cases) but did not change the fundamental ranking order for most profiles. The bias comes from catalog size, not weights alone.
 
 ---
 
