@@ -83,6 +83,36 @@ Genre is the hardest dealbreaker — a jazz fan won't enjoy metal regardless of 
 
 ---
 
+### Sample Terminal Output
+
+Default profile: `genre=pop  mood=happy  energy=0.8  likes_acoustic=False`
+
+```
+====================================================
+  User profile: genre=pop  mood=happy  energy=0.8
+====================================================
+  #   Title                  Artist           Score
+  --- ---------------------- ---------------- -----
+  1   Sunrise City           Neon Echo        0.98
+      Because: genre match (+2.0), mood match (+1.0), energy proximity (+1.47), acousticness fit (+0.41)
+
+  2   Gym Hero               Max Pulse        0.76
+      Because: genre match (+2.0), energy proximity (+1.30), acousticness fit (+0.47)
+
+  3   Rooftop Lights         Indigo Parade    0.55
+      Because: mood match (+1.0), energy proximity (+1.44), acousticness fit (+0.33)
+
+  4   Groove Station         The Funk Unit    0.38
+      Because: energy proximity (+1.48), acousticness fit (+0.43)
+
+  5   Neon Pulse             Synthara         0.37
+      Because: energy proximity (+1.41), acousticness fit (+0.46)
+```
+
+Results match expectations: the two pop songs (#1 and #2) dominate because genre earns 40% of the score. "Sunrise City" edges out "Gym Hero" because it also matches the `happy` mood. Songs #3–5 have no genre match but rank by energy closeness.
+
+---
+
 ## Getting Started
 
 ### Setup
@@ -136,7 +166,21 @@ For a chill user who preferred lofi and acoustic sounds, the system worked well 
 
 For a user with broad preferences using lists for genre and mood, the system opened up well and returned a more diverse set of results. The list-based profile is noticeably better at capturing real listening habits than a single genre or mood value.
 
----
+**Changing genre weight from 2.0 to 0.5**
+
+When genre weight was dropped to 0.5, songs from completely different genres started appearing in the top results. A user who preferred rock would get lofi and ambient songs recommended simply because the mood and energy were close enough to dominate the score. The results felt less coherent — the system stopped respecting the most fundamental filter a user has. Keeping genre at 2.0 produces tighter, more believable recommendations.
+
+**Adding tempo and valence to the score**
+
+Adding tempo as a scored feature helped separate songs that felt similar in genre and mood but had very different rhythmic energy. For example, Storm Runner at 152 BPM and Coffee Shop Stories at 90 BPM both could match a "relaxed" user in other ways, but tempo made the distinction clear. Valence added some nuance around emotional positivity but overlapped heavily with mood, which already captured a lot of that signal. The result was marginal improvement at the cost of a more complex scoring formula.
+
+**How the system behaved for different user types**
+
+For a high-energy user who preferred rock and intense moods, the system consistently surfaced Storm Runner and Shatter at the top with scores above 0.90. The recommendations were accurate and predictable.
+
+For a chill user who preferred lofi and acoustic sounds, the system worked well within the lofi catalog but struggled when that genre had few songs. It would fall back to ambient tracks which felt close but not quite right.
+
+For a user with broad preferences using lists for genre and mood, the system opened up well and returned a more diverse set of results. The list-based profile is noticeably better at capturing real listening habits than a single genre or mood value.
 
 ## Limitations and Risks
 
